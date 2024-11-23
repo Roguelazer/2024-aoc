@@ -1,0 +1,33 @@
+[package]
+name = "aoc2024"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "aoclib"
+path = "src/aoclib/lib.rs"
+
+[dependencies]
+anyhow = "1"
+bit-set = "0.5"
+clap = { version = "4.4", features = ["derive"] }
+crossterm = "0.27.0"
+ctrlc = "3"
+derive_more = "0.99.17"
+env_logger = "0.10"
+image = "0.24.7"
+itertools = "0.12"
+log = { version = "0.4", features = ["release_max_level_info"] }
+lru-cache = "0.1.2"
+mut-binary-heap = "0.1.0"
+ndarray = "0.15.6"
+ndarray-linalg = { version = "0.16.0", features = ["openblas-system"] }
+nom = "7.1"
+nonempty = { version = "0.9", features = ["serde"] }
+num = "0.4.1"
+num-traits = "0.2"
+petgraph = "0.6"
+rayon = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+smallvec = "1.11.2"
