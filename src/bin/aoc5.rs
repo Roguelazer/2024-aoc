@@ -1,26 +1,28 @@
+use anyhow::Context;
 use nom::bytes::complete::tag;
 use nom::character::complete::newline;
 use nom::combinator::map;
 use nom::multi::separated_list1;
 use nom::sequence::{pair, separated_pair};
 use nom::IResult;
+use petgraph::graph::DiGraph;
 
 use std::collections::BTreeMap;
 use std::io::Read;
 
 #[derive(Debug, Clone, Copy)]
 struct Constraint {
-    lhs: i32,
-    rhs: i32,
+    lhs: u32,
+    rhs: u32,
 }
 
 impl Constraint {
     fn parse(s: &str) -> IResult<&str, Self> {
         map(
             separated_pair(
-                nom::character::complete::i32,
+                nom::character::complete::u32,
                 tag("|"),
-                nom::character::complete::i32,
+                nom::character::complete::u32,
             ),
             |(lhs, rhs)| Self { lhs, rhs },
         )(s)
@@ -29,13 +31,17 @@ impl Constraint {
 
 #[derive(Debug)]
 struct Update {
-    pages: Vec<i32>,
-    page_indexes: BTreeMap<i32, usize>,
+    pages: Vec<u32>,
+    page_indexes: BTreeMap<u32, usize>,
 }
 
 impl Update {
-    fn new(pages: Vec<i32>) -> Self {
-        let page_indexes = pages.iter().enumerate().map(|(i, val)| (*val, i)).collect();
+    fn new(pages: Vec<u32>) -> Self {
+        let page_indexes = pages
+            .iter()
+            .enumerate()
+            .map(|(i, val)| (*val, i))
+            .collect::<BTreeMap<_, _>>();
         Self {
             pages,
             page_indexes,
@@ -44,12 +50,12 @@ impl Update {
 
     fn parse(s: &str) -> IResult<&str, Self> {
         map(
-            separated_list1(tag(","), nom::character::complete::i32),
+            separated_list1(tag(","), nom::character::complete::u32),
             |cs| Self::new(cs),
         )(s)
     }
 
-    fn middle_page(&self) -> i32 {
+    fn middle_page(&self) -> u32 {
         self.pages[self.pages.len() / 2]
     }
 }
@@ -99,17 +105,55 @@ impl Project {
         })
     }
 
-    fn part1(&self) -> i32 {
+    fn fix(&self, update: &Update) -> anyhow::Result<Update> {
+        let mut graph: DiGraph<u32, ()> = DiGraph::new();
+        let page_to_index: BTreeMap<u32, _> = update
+            .pages
+            .iter()
+            .map(|page| (*page, graph.add_node(*page)))
+            .collect();
+        let index_to_page: BTreeMap<_, u32> = page_to_index.iter().map(|(k, v)| (*v, *k)).collect();
+        self.constraints
+            .iter()
+            .filter(|constraint| {
+                update.page_indexes.contains_key(&constraint.lhs)
+                    && update.page_indexes.contains_key(&constraint.rhs)
+            })
+            .for_each(|constraint| {
+                let left_node = page_to_index.get(&constraint.lhs).unwrap();
+                let right_node = page_to_index.get(&constraint.rhs).unwrap();
+                graph.add_edge(*left_node, *right_node, ());
+            });
+        let order = petgraph::algo::toposort(&graph, None)
+            .map_err(|e| anyhow::anyhow!("graph had a cycle: {:?}", e))
+            .with_context(|| format!("failed to topologically sort graph"))?;
+        let pages = order
+            .into_iter()
+            .map(|idx| *(index_to_page.get(&idx).unwrap()))
+            .collect::<Vec<u32>>();
+        Ok(Update::new(pages))
+    }
+
+    fn part1(&self) -> u32 {
         self.updates
             .iter()
             .filter(|update| self.is_valid(update))
             .map(|update| update.middle_page())
             .sum()
     }
+
+    fn part2(&mut self) -> u32 {
+        self.updates
+            .iter()
+            .filter(|update| !self.is_valid(update))
+            .map(|update| self.fix(update).unwrap().middle_page())
+            .sum()
+    }
 }
 
 fn main() -> anyhow::Result<()> {
-    let project = Project::read()?;
+    let mut project = Project::read()?;
     println!("Part 1: {}", project.part1());
+    println!("Part 2: {}", project.part2());
     Ok(())
 }
