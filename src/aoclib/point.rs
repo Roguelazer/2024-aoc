@@ -52,6 +52,17 @@ impl<I: DimVal> Point<I> {
     }
 }
 
+impl Point<i64> {
+    pub fn ordinal_neighbors(&self) -> (Self, Self, Self, Self) {
+        (
+            *self + Self::new(1, 0),
+            *self + Self::new(0, 1),
+            *self + Self::new(-1, 0),
+            *self + Self::new(0, -1),
+        )
+    }
+}
+
 impl<I: DimVal + Ord> Point<I> {
     pub fn line_to(&self, other: Point<I>) -> impl Iterator<Item = Point<I>> {
         LineToIter::new(*self, other)

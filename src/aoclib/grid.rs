@@ -76,6 +76,27 @@ impl<V: Clone + fmt::Debug + HasEmpty> DenseGrid<V> {
         }
         g
     }
+
+    pub fn try_from_input<E, F>(input: &str, f: F) -> Result<Self, E>
+    where
+        F: Fn(char) -> Result<V, E>,
+    {
+        let height = input.lines().count() as i64 - 1;
+        let width = input.lines().next().unwrap().chars().count() as i64 - 1;
+        let mut g = Self::new_with(
+            Point::new(0, 0),
+            Point::new(width, height),
+            V::empty_value(),
+        );
+        for (y, row) in input.lines().enumerate() {
+            for (x, chr) in row.chars().enumerate() {
+                let coord = Point::new(x as i64, y as i64);
+                let value = f(chr)?;
+                g.set(coord, value);
+            }
+        }
+        Ok(g)
+    }
 }
 
 impl<V: Clone + fmt::Debug> DenseGrid<V> {
