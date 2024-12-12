@@ -61,6 +61,15 @@ impl Point<i64> {
             *self + Self::new(0, -1),
         )
     }
+
+    pub fn ordinal_neighbors_array(&self) -> [Point; 4] {
+        [
+            *self + Self::new(1, 0),
+            *self + Self::new(0, 1),
+            *self + Self::new(-1, 0),
+            *self + Self::new(0, -1),
+        ]
+    }
 }
 
 impl<I: DimVal + Ord> Point<I> {
