@@ -70,6 +70,10 @@ impl Point<i64> {
             *self + Self::new(0, -1),
         ]
     }
+
+    pub fn mirror(&self) -> Point {
+        Self::new(self.x * -1, self.y * -1)
+    }
 }
 
 impl<I: DimVal + Ord> Point<I> {

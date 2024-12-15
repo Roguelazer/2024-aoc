@@ -244,6 +244,13 @@ impl<V: Clone + fmt::Debug> DenseGrid<V> {
     }
 }
 
+impl<V: Clone + PartialEq + fmt::Debug> DenseGrid<V> {
+    pub fn find(&self, value: &V) -> Option<Point> {
+        self.iter()
+            .find_map(|(p, v)| if v == *value { Some(p) } else { None })
+    }
+}
+
 pub struct Rows<'a, V: Clone + std::fmt::Debug> {
     grid: &'a DenseGrid<V>,
     y: Index,
