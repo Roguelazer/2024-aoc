@@ -1,5 +1,6 @@
 mod dimval;
 mod grid;
+pub mod petgraph_bellman_ford_multi;
 mod point;
 mod vec3;
 
