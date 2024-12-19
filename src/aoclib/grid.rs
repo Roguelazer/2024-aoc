@@ -1,7 +1,9 @@
 use std::cmp::{max, min};
+use std::collections::{BTreeSet, BinaryHeap};
 use std::fmt;
 
 use super::point::Point;
+use super::DijkstraMetric;
 
 type Index = i64;
 
@@ -242,6 +244,75 @@ impl<V: Clone + fmt::Debug> DenseGrid<V> {
             y: self.min_y,
         }
     }
+
+    pub fn dijkstra<MV, TF, F>(
+        &self,
+        start: Point,
+        traversible: TF,
+        cost: F,
+    ) -> anyhow::Result<DenseGrid<DijkstraMetric<MV>>>
+    where
+        MV: std::fmt::Debug
+            + Clone
+            + Copy
+            + PartialEq
+            + Eq
+            + PartialOrd
+            + Ord
+            + num_traits::Zero
+            + std::ops::Add,
+        F: Fn(&Self, Point, Point) -> MV,
+        TF: Fn(&Self, Point) -> bool,
+    {
+        use std::cmp::Reverse;
+
+        if !self.contains(start) {
+            anyhow::bail!("start point not contained in map");
+        }
+        let mut new = DenseGrid::new_with_dimensions_from(&self, DijkstraMetric::Infinite);
+        new.set(start, DijkstraMetric::Finite(MV::zero()));
+        let mut unvisited = BinaryHeap::new();
+        let mut visited = BTreeSet::new();
+        unvisited.push((Reverse(DijkstraMetric::Finite(MV::zero())), start));
+        while let Some((Reverse(DijkstraMetric::Finite(current)), point)) = unvisited.pop() {
+            if visited.contains(&point) {
+                continue;
+            }
+            for neighbor in point.ordinal_neighbors_array() {
+                if !self.contains(neighbor) {
+                    continue;
+                }
+                if visited.contains(&neighbor) {
+                    continue;
+                }
+                if !traversible(&self, neighbor) {
+                    continue;
+                }
+                let distance = cost(&self, point, neighbor);
+                let next = current + distance;
+                let val = match new.get(neighbor) {
+                    Some(DijkstraMetric::Finite(v)) => {
+                        if next < v {
+                            new.set(neighbor, DijkstraMetric::Finite(next));
+                            next
+                        } else {
+                            v
+                        }
+                    }
+                    Some(DijkstraMetric::Infinite) => {
+                        new.set(neighbor, DijkstraMetric::Finite(next));
+                        next
+                    }
+                    None => {
+                        continue;
+                    }
+                };
+                unvisited.push((Reverse(DijkstraMetric::Finite(val)), neighbor));
+            }
+            visited.insert(point);
+        }
+        Ok(new)
+    }
 }
 
 impl<V: Clone + PartialEq + fmt::Debug> DenseGrid<V> {
@@ -385,5 +456,43 @@ mod tests {
                 vec![0, 0, 0, 4]
             ]
         );
+    }
+
+    #[test]
+    fn test_dijkstra() {
+        use crate::DijkstraMetric;
+        let mut g = DenseGrid::new_with(Point { x: 0, y: 0 }, Point { x: 3, y: 3 }, false);
+        g.set(Point::new(0, 0), true);
+        g.set(Point::new(0, 1), true);
+        g.set(Point::new(0, 2), true);
+        g.set(Point::new(1, 0), true);
+        g.set(Point::new(2, 0), true);
+        g.set(Point::new(2, 1), true);
+        g.set(Point::new(2, 2), true);
+        g.set(Point::new(0, 3), true);
+        g.set(Point::new(1, 3), true);
+        g.set(Point::new(2, 3), true);
+        g.set(Point::new(2, 3), true);
+        g.set(Point::new(3, 3), true);
+        let res = g
+            .dijkstra(
+                Point::new(0, 0),
+                |g, p| g.get(p) == Some(true),
+                |_, _, _| 1usize,
+            )
+            .expect("should evaluate");
+        assert_eq!(
+            res.get(Point::new(0, 0)).unwrap(),
+            DijkstraMetric::Finite(0)
+        );
+        assert_eq!(res.get(Point::new(3, 0)).unwrap(), DijkstraMetric::Infinite);
+        assert_eq!(
+            res.get(Point::new(3, 3)).unwrap(),
+            DijkstraMetric::Finite(6)
+        );
+        res.dump_with(|v| match v {
+            DijkstraMetric::Infinite => '.',
+            DijkstraMetric::Finite(v) => v.to_string().chars().next().unwrap(),
+        })
     }
 }

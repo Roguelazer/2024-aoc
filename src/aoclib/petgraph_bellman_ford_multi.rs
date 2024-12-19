@@ -23,7 +23,7 @@ pub struct MultiPaths<NodeId, EdgeWeight> {
 /// # Example
 /// ```rust
 /// use petgraph::Graph;
-/// use petgraph::algo::bellman_ford_multi_predecessors;
+/// use aoclib::petgraph_bellman_ford_multi::bellman_ford_multi_predecessors;
 /// use petgraph::prelude::*;
 ///
 /// let mut g = Graph::new();
