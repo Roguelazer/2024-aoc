@@ -47,3 +47,12 @@ impl<V: Ord + std::fmt::Debug + Clone + Copy + PartialEq + Eq> Ord for DijkstraM
         }
     }
 }
+
+impl<V: std::fmt::Debug + Clone + Copy> DijkstraMetric<V> {
+    pub fn unwrap(&self) -> V {
+        match self {
+            Self::Finite(a) => *a,
+            Self::Infinite => panic!("expected finite value"),
+        }
+    }
+}

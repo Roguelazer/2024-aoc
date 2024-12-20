@@ -250,7 +250,7 @@ impl<V: Clone + fmt::Debug> DenseGrid<V> {
         start: Point,
         traversible: TF,
         cost: F,
-    ) -> anyhow::Result<DenseGrid<DijkstraMetric<MV>>>
+    ) -> anyhow::Result<(DenseGrid<DijkstraMetric<MV>>, DenseGrid<Option<Point>>)>
     where
         MV: std::fmt::Debug
             + Clone
@@ -271,6 +271,7 @@ impl<V: Clone + fmt::Debug> DenseGrid<V> {
         }
         let mut new = DenseGrid::new_with_dimensions_from(&self, DijkstraMetric::Infinite);
         new.set(start, DijkstraMetric::Finite(MV::zero()));
+        let mut preds = DenseGrid::new_with_dimensions_from(&self, None);
         let mut unvisited = BinaryHeap::new();
         let mut visited = BTreeSet::new();
         unvisited.push((Reverse(DijkstraMetric::Finite(MV::zero())), start));
@@ -294,6 +295,7 @@ impl<V: Clone + fmt::Debug> DenseGrid<V> {
                     Some(DijkstraMetric::Finite(v)) => {
                         if next < v {
                             new.set(neighbor, DijkstraMetric::Finite(next));
+                            preds.set(neighbor, Some(point));
                             next
                         } else {
                             v
@@ -301,6 +303,7 @@ impl<V: Clone + fmt::Debug> DenseGrid<V> {
                     }
                     Some(DijkstraMetric::Infinite) => {
                         new.set(neighbor, DijkstraMetric::Finite(next));
+                        preds.set(neighbor, Some(point));
                         next
                     }
                     None => {
@@ -311,7 +314,7 @@ impl<V: Clone + fmt::Debug> DenseGrid<V> {
             }
             visited.insert(point);
         }
-        Ok(new)
+        Ok((new, preds))
     }
 }
 
@@ -474,7 +477,7 @@ mod tests {
         g.set(Point::new(2, 3), true);
         g.set(Point::new(2, 3), true);
         g.set(Point::new(3, 3), true);
-        let res = g
+        let (res, preds) = g
             .dijkstra(
                 Point::new(0, 0),
                 |g, p| g.get(p) == Some(true),
@@ -485,14 +488,12 @@ mod tests {
             res.get(Point::new(0, 0)).unwrap(),
             DijkstraMetric::Finite(0)
         );
+        assert_eq!(preds.get(Point::new(0, 0)).unwrap(), None,);
         assert_eq!(res.get(Point::new(3, 0)).unwrap(), DijkstraMetric::Infinite);
         assert_eq!(
             res.get(Point::new(3, 3)).unwrap(),
             DijkstraMetric::Finite(6)
         );
-        res.dump_with(|v| match v {
-            DijkstraMetric::Infinite => '.',
-            DijkstraMetric::Finite(v) => v.to_string().chars().next().unwrap(),
-        })
+        assert_eq!(preds.get(Point::new(3, 3)).unwrap(), Some(Point::new(2, 3)));
     }
 }
