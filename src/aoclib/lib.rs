@@ -2,6 +2,7 @@ mod dijkstra_metric;
 mod dimval;
 mod grid;
 pub mod petgraph_bellman_ford_multi;
+pub mod petgraph_bron_kerbosch;
 mod point;
 mod vec3;
 
